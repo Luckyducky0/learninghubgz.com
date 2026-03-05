@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Games Hub</title>
+
+<style>
+
+body{
+background:#0f172a;
+color:white;
+font-family:Arial;
+text-align:center;
+}
+
+h1{
+margin-top:40px;
+}
+
+button{
+padding:15px 30px;
+font-size:20px;
+border:none;
+border-radius:10px;
+cursor:pointer;
+background:#22c55e;
+color:white;
+margin-top:20px;
+}
+
+button:hover{
+background:#16a34a;
+}
+
+#tetrisContainer{
+display:none;
+position:fixed;
+top:0;
+left:0;
+width:100%;
+height:100%;
+background:black;
+align-items:center;
+justify-content:center;
+flex-direction:column;
+}
+
+canvas{
+border:4px solid white;
+}
+
+#closeBtn{
+position:absolute;
+top:20px;
+right:20px;
+background:red;
+}
+
+</style>
+</head>
+
+<body>
+
+<h1>Game Hub</h1>
+
+<button onclick="startTetris()">Play Tetris</button>
+
+<div id="tetrisContainer">
+
+<button id="closeBtn" onclick="closeGame()">Exit</button>
+
+<canvas id="tetris" width="240" height="400"></canvas>
+
+</div>
+
+<script>
+
+function startTetris(){
+document.getElementById("tetrisContainer").style.display="flex";
+}
+
+function closeGame(){
+document.getElementById("tetrisContainer").style.display="none";
+}
+
+const canvas = document.getElementById("tetris");
+const context = canvas.getContext("2d");
+
+context.scale(20,20);
+
+function createMatrix(w,h){
+const matrix=[];
+while(h--){
+matrix.push(new Array(w).fill(0));
+}
+return matrix;
+}
+
+function createPiece(type){
+if(type==='T'){
+return[
+[0,1,0],
+[1,1,1],
+[0,0,0],
+];
+}
+if(type==='O'){
+return[
+[2,2],
+[2,2],
+];
+}
+if(type==='L'){
+return[
+[0,3,0],
+[0,3,0],
+[0,3,3],
+];
+}
+if(type==='J'){
+return[
+[0,4,0],
+[0,4,0],
+[4,4,0],
+];
+}
+if(type==='I'){
+return[
+[0,5,0,0],
+[0,5,0,0],
+[0,5,0,0],
+[0,5,0,0],
+];
+}
+if(type==='S'){
+return[
+[0,6,6],
+[6,6,0],
+[0,0,0],
+];
+}
+if(type==='Z'){
+return[
+[7,7,0],
+[0,7,7],
+[0,0,0],
+];
+}
+}
+
+const arena=createMatrix(12,20);
+
+const player={
+pos:{x:0,y:0},
+matrix:null
+};
+
+function drawMatrix(matrix,offset){
+matrix.forEach((row,y)=>{
+row.forEach((value,x)=>{
+if(value!==0){
+context.fillStyle='white';
+context.fillRect(x+offset.x,y+offset.y,1,1);
+}
+});
+});
+}
+
+function draw(){
+context.fillStyle='#000';
+context.fillRect(0,0,canvas.width,canvas.height);
+
+drawMatrix(arena,{x:0,y:0});
+drawMatrix(player.matrix,player.pos);
+}
+
+function playerReset(){
+const pieces='TJLOSZI';
+player.matrix=createPiece(pieces[Math.floor(Math.random()*pieces.length)]);
+player.pos.y=0;
+player.pos.x=(arena[0].length/2|0)-(player.matrix[0].length/2|0);
+}
+
+function playerDrop(){
+player.pos.y++;
+draw();
+}
+
+let dropCounter=0;
+let dropInterval=1000;
+let lastTime=0;
+
+function update(time=0){
+const deltaTime=time-lastTime;
+lastTime=time;
+
+dropCounter+=deltaTime;
+
+if(dropCounter>dropInterval){
+playerDrop();
+dropCounter=0;
+}
+
+draw();
+requestAnimationFrame(update);
+}
+
+document.addEventListener("keydown",event=>{
+if(event.key==="ArrowLeft"){
+player.pos.x--;
+}
+else if(event.key==="ArrowRight"){
+player.pos.x++;
+}
+else if(event.key==="ArrowDown"){
+playerDrop();
+}
+});
+
+playerReset();
+update();
+
+</script>
+
+</body>
+</html>
+<button onclick="document.getElementById('gameOverlay').style.display='block'; document.getElementById('gameFrame').src='https://growden.io/';">
+Open Game
+</button>
+
+<div id="gameOverlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:black; z-index:9999;">
+
+<button onclick="document.getElementById('gameOverlay').style.display='none'; document.getElementById('gameFrame').src='';"
+style="position:absolute; top:20px; right:20px; padding:10px 20px; font-size:18px; z-index:10000;">
+Exit
+</button>
+
+<iframe id="gameFrame" style="width:100%; height:100%; border:none;"></iframe>
+
+</div>
+<button onclick="document.getElementById('gameOverlay2').style.display='block'; document.getElementById('gameFrame2').src='https://wither.lat/';">
+Open Game 2
+</button>
+
+<div id="gameOverlay2" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:black; z-index:9999;">
+
+<button onclick="document.getElementById('gameOverlay2').style.display='none'; document.getElementById('gameFrame2').src='';"
+style="position:absolute; top:20px; right:20px; padding:10px 20px; font-size:18px; z-index:10000;">
+Exit
+</button>
+
+<iframe id="gameFrame2" style="width:100%; height:100%; border:none;"></iframe>
+
+</div>
+<button onclick="document.getElementById('gameOverlay3').style.display='block'; document.getElementById('gameFrame3').src='https://www.snapchat.com/';">
+Not Working Game
+</button>
+
+<div id="gameOverlay3" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:black; z-index:9999;">
+
+<button onclick="document.getElementById('gameOverlay3').style.display='none'; document.getElementById('gameFrame3').src='';"
+style="position:absolute; top:20px; right:20px; padding:10px 20px; font-size:18px; z-index:10000;">
+Exit
+</button>
+
+<iframe id="gameFrame3" style="width:100%; height:100%; border:none;"></iframe>
+
+</div>
+<button onclick="document.getElementById('folderOverlay').style.display='block'">
+Open Downloads Folder
+</button>
+
+<div id="folderOverlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:#1e293b; color:white; font-family:Arial; z-index:9999; padding:40px;">
+
+<button onclick="document.getElementById('folderOverlay').style.display='none'"
+style="position:absolute; top:20px; right:20px; padding:10px 20px; font-size:18px;">
+Close
+</button>
+
+<h2>Downloads</h2>
+
+<div style="margin-top:30px; background:#334155; padding:15px; border-radius:8px; width:250px;">
+<a href="https://www.roblox.com/download/client?os=win" download style="color:white; text-decoration:none;">
+📁 RobloxInstaller.exe
+</a>
+</div>
+
+</div>
