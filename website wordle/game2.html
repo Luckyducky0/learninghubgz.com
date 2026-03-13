@@ -1458,6 +1458,23 @@
       currentRow++;
       currentGuess = "";
     }
+
+    document.addEventListener("keydown", (event) => {
+      const wordLock = document.getElementById("wordLock");
+      if (!wordLock || getComputedStyle(wordLock).display === "none") return;
+
+      if (event.key === "Enter") {
+        submitGuess();
+        return;
+      }
+      if (event.key === "Backspace") {
+        deleteLetter();
+        return;
+      }
+      if (/^[a-zA-Z]$/.test(event.key)) {
+        addLetter(event.key.toUpperCase());
+      }
+    });
   </script>
 
   <script>
