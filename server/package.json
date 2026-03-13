@@ -1,0 +1,14 @@
+{
+  "name": "game-hub-auth",
+  "version": "1.0.0",
+  "description": "PIN auth server for Game Hub",
+  "main": "index.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.19.2"
+  }
+}
