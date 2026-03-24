@@ -241,6 +241,28 @@
       color: var(--muted);
     }
 
+    .page-switch {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 14px;
+      flex-wrap: wrap;
+    }
+
+    .page-switch .ghost-btn[aria-pressed="true"] {
+      border-color: #0f172a;
+      background: rgba(255, 255, 255, 0.12);
+      color: var(--ink);
+      box-shadow: 6px 6px 0 #0f172a;
+    }
+
+    .game-page {
+      display: none;
+    }
+
+    .game-page.active {
+      display: block;
+    }
+
     .game-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -762,7 +784,16 @@
     <section class="section">
       <h2>Instant Play</h2>
       <p>Handpicked shortcuts to the stuff you launch most.</p>
-      <div id="gameGrid" class="game-grid"></div>
+      <div class="page-switch">
+        <button id="page1Btn" class="ghost-btn" type="button" aria-pressed="true">Page 1</button>
+        <button id="page2Btn" class="ghost-btn" type="button" aria-pressed="false">Page 2</button>
+      </div>
+      <div id="gamePage1" class="game-page active">
+        <div id="gameGrid" class="game-grid"></div>
+      </div>
+      <div id="gamePage2" class="game-page">
+        <div id="gameGrid2" class="game-grid"></div>
+      </div>
     </section>
 
     <section class="section">
@@ -832,7 +863,7 @@
   </div>
 
   <script>
-    const baseGames = [
+    const baseGamesPage1 = [
       { name: "Browser", url: "https://kidscalculatorforgraphing.xyz/a.html", tag: "Arcade" },
       { name: "Wither", url: "https://wither.lat/", tag: "Sandbox" },
       { name: "Twisted", url: "http://www.twistededucation.lol/", tag: "Mystery" },
@@ -844,6 +875,11 @@
       { name: "Chroblox", url: "https://minor-aleen-chroblox-73b30ef9.koyeb.app/", tag: "Portal" },
       { name: "science", url: "https://sc.dailyhealthscience.us/homework.jsp?id=bigE&from=3", tag: "Proxy" },
       { name: "videnom", url: "https://info.videnom.com/", tag: "Proxy" }
+    ];
+
+    const baseGamesPage2 = [
+      { name: "Roblox Download (PC)", url: "https://www.roblox.com/download", tag: "PC", external: true },
+      { name: "Roblox Android", url: "https://play.google.com/store/apps/details?id=com.roblox.client&hl=en&utm_source=global_co&utm_medium=prtnr&utm_content=Mar2515&utm_campaign=PartBadge&pcampaignid=MKT-Other-global-all-co-prtnr-py-PartBadge-Mar2515-1", tag: "Android", external: true }
     ];
 
     const paletteSets = [
@@ -866,8 +902,6 @@
     ];
 
     const paletteLabels = ["Pop", "Neon"];
-    const gameList = baseGames.slice();
-
     function makeThumb(title, colorA, colorB) {
       const label = title.replace(/[^a-zA-Z0-9]/g, "").slice(0, 3).toUpperCase() || "GX";
       const svg = `
@@ -895,6 +929,11 @@
     const overlayFrame = document.getElementById("overlayFrame");
     const overlayTitle = document.getElementById("overlayTitle");
     const gameGrid = document.getElementById("gameGrid");
+    const gameGrid2 = document.getElementById("gameGrid2");
+    const gamePage1 = document.getElementById("gamePage1");
+    const gamePage2 = document.getElementById("gamePage2");
+    const page1Btn = document.getElementById("page1Btn");
+    const page2Btn = document.getElementById("page2Btn");
     const nowPlaying = document.getElementById("nowPlaying");
     const nowPlayingTrack = document.getElementById("nowPlayingTrack");
 
@@ -963,27 +1002,56 @@
     const comicStyles = ["comic-style-a", "comic-style-b", "comic-style-c", "comic-style-d"];
     const cards = [];
 
-    gameList.forEach((game, index) => {
-      const card = document.createElement("button");
-      card.className = `game-card ${comicStyles[index % comicStyles.length]}`;
-      card.innerHTML = `
-        <div class="card-glow"></div>
-        <div class="comic-splash"></div>
-        <div class="card-thumb"><img src="" alt="${game.name} thumbnail"></div>
-        <div class="card-title">${game.name}</div>
-        <div class="card-meta">${game.tag}</div>
-      `;
-      card.style.setProperty("--delay", `${120 + index * 80}ms`);
-      card.addEventListener("mousemove", (event) => {
-        const rect = card.getBoundingClientRect();
-        const x = ((event.clientX - rect.left) / rect.width) * 100;
-        const y = ((event.clientY - rect.top) / rect.height) * 100;
-        card.style.setProperty("--mx", `${x}%`);
-        card.style.setProperty("--my", `${y}%`);
+    const gamePages = [
+      { grid: gameGrid, container: gamePage1, button: page1Btn, games: baseGamesPage1, cards: [] },
+      { grid: gameGrid2, container: gamePage2, button: page2Btn, games: baseGamesPage2, cards: [] }
+    ];
+
+    function setPage(index) {
+      gamePages.forEach((page, i) => {
+        if (page.container) page.container.classList.toggle("active", i === index);
+        if (page.button) page.button.setAttribute("aria-pressed", i === index ? "true" : "false");
       });
-      card.addEventListener("click", () => openGame(game.url, game.name));
-      gameGrid.appendChild(card);
-      cards.push(card);
+    }
+
+    if (page1Btn) page1Btn.addEventListener("click", () => setPage(0));
+    if (page2Btn) page2Btn.addEventListener("click", () => setPage(1));
+    setPage(0);
+
+    function handleGameClick(game) {
+      if (game.external) {
+        window.open(game.url, "_blank", "noopener");
+        showNowPlaying(game.name);
+        return;
+      }
+      openGame(game.url, game.name);
+    }
+
+    gamePages.forEach((page) => {
+      page.games.forEach((game) => {
+        const cardIndex = cards.length;
+        const card = document.createElement("button");
+        card.className = `game-card ${comicStyles[cardIndex % comicStyles.length]}`;
+        card.innerHTML = `
+          <div class="card-glow"></div>
+          <div class="comic-splash"></div>
+          <div class="card-thumb"><img src="" alt="${game.name} thumbnail"></div>
+          <div class="card-title">${game.name}</div>
+          <div class="card-meta">${game.tag}</div>
+        `;
+        card.style.setProperty("--delay", `${120 + cardIndex * 80}ms`);
+        card.addEventListener("mousemove", (event) => {
+          const rect = card.getBoundingClientRect();
+          const x = ((event.clientX - rect.left) / rect.width) * 100;
+          const y = ((event.clientY - rect.top) / rect.height) * 100;
+          card.style.setProperty("--mx", `${x}%`);
+          card.style.setProperty("--my", `${y}%`);
+        });
+        card.addEventListener("click", () => handleGameClick(game));
+        page.grid.appendChild(card);
+        page.cards.push(card);
+        cards.push({ card, game });
+      });
     });
 
     let paletteIndex = Number(localStorage.getItem("paletteIndex") || "0");
@@ -996,12 +1064,12 @@
       paletteIndex = index % paletteSets.length;
       localStorage.setItem("paletteIndex", String(paletteIndex));
       const palette = paletteSets[paletteIndex];
-      cards.forEach((card, i) => {
+      cards.forEach(({ card, game }, i) => {
         const colors = palette[i % palette.length];
         card.style.setProperty("--c1", colors[0]);
         card.style.setProperty("--c2", colors[1]);
         const img = card.querySelector("img");
-        if (img) img.src = makeThumb(gameList[i].name, colors[0], colors[1]);
+        if (img) img.src = makeThumb(game.name, colors[0], colors[1]);
       });
       if (themeToggle) themeToggle.textContent = `Palette: ${paletteLabels[paletteIndex]}`;
     }
