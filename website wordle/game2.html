@@ -691,6 +691,95 @@
       color: white;
     }
 
+    #chatButton {
+      position: fixed;
+      bottom: 18px;
+      left: 18px;
+      width: 54px;
+      height: 54px;
+      border-radius: 14px;
+      border: 3px solid #0f172a;
+      background: linear-gradient(135deg, #22d3ee, #60a5fa);
+      color: #0f172a;
+      font-weight: 700;
+      cursor: pointer;
+      z-index: 9800;
+      box-shadow: 8px 8px 0 #0f172a;
+      font-family: "JetBrains Mono", ui-monospace, monospace;
+    }
+
+    #chatPanel {
+      position: fixed;
+      bottom: 80px;
+      left: 18px;
+      width: min(320px, 90vw);
+      max-height: 60vh;
+      display: none;
+      flex-direction: column;
+      gap: 10px;
+      background: rgba(15, 23, 42, 0.98);
+      border: 3px solid #0f172a;
+      border-radius: 16px;
+      box-shadow: 10px 10px 0 #0f172a;
+      z-index: 9800;
+      padding: 12px;
+    }
+
+    #chatPanel.active {
+      display: flex;
+    }
+
+    .chat-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-family: "JetBrains Mono", ui-monospace, monospace;
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #e2f3ff;
+    }
+
+    .chat-log {
+      display: grid;
+      gap: 8px;
+      overflow-y: auto;
+      padding-right: 4px;
+      max-height: 36vh;
+    }
+
+    .chat-bubble {
+      background: #0b1020;
+      border: 2px solid #0f172a;
+      border-radius: 12px;
+      padding: 8px 10px;
+      font-size: 13px;
+      box-shadow: 4px 4px 0 #0f172a;
+      word-break: break-word;
+    }
+
+    .chat-meta {
+      font-size: 10px;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+
+    .chat-input-row {
+      display: flex;
+      gap: 8px;
+    }
+
+    #chatInput {
+      flex: 1;
+      border-radius: 10px;
+      border: 2px solid #0f172a;
+      background: #0f172a;
+      color: white;
+      padding: 8px;
+      font-family: "JetBrains Mono", ui-monospace, monospace;
+      font-size: 13px;
+    }
+
     #secretCorner {
       position: fixed;
       top: 0;
@@ -862,6 +951,19 @@
     <button class="ghost-btn" onclick="checkSecret()">Submit</button>
   </div>
 
+  <button id="chatButton" type="button">Chat</button>
+  <div id="chatPanel" aria-live="polite">
+    <div class="chat-header">
+      <span>Global Chat</span>
+      <button class="ghost-btn" id="chatClose" type="button">Close</button>
+    </div>
+    <div class="chat-log" id="chatLog"></div>
+    <div class="chat-input-row">
+      <input id="chatInput" placeholder="Type a message...">
+      <button class="action-btn" id="chatSend" type="button">Send</button>
+    </div>
+  </div>
+
   <script>
     const baseGamesPage1 = [
       { name: "Browser", url: "https://kidscalculatorforgraphing.xyz/a.html", tag: "Arcade" },
@@ -874,7 +976,7 @@
       { name: "Vapor", url: "https://vaporvcsa.cogni-nn.ru/", tag: "Proxy" },
       { name: "Chroblox", url: "https://minor-aleen-chroblox-73b30ef9.koyeb.app/", tag: "Portal" },
       { name: "science", url: "https://sc.dailyhealthscience.us/homework.jsp?id=bigE&from=3", tag: "Proxy" },
-      { name: "videnom", url: "https://info.videnom.com/", tag: "Proxy" }
+      { name: "now.gg", url: "https://now.gg/", tag: "Proxy" }
     ];
 
     const baseGamesPage2 = [
@@ -1111,12 +1213,34 @@
         headers: { "Content-Type": "application/json" },
         ...options
       });
-      const data = await response.json().catch(() => ({}));
+      let data = null;
+      try {
+        data = await response.clone().json();
+      } catch {
+        data = null;
+      }
+      let text = "";
+      if (!data) {
+        try {
+          text = await response.text();
+        } catch {
+          text = "";
+        }
+      }
       if (!response.ok) {
-        const message = data && data.message ? data.message : "Request failed.";
+        let message = (data && data.message) ? data.message : "";
+        if (!message && response.status === 404) {
+          message = "Chat service unavailable. Update the server.";
+        }
+        if (!message && text) {
+          message = text.slice(0, 120);
+        }
+        if (!message) {
+          message = `Request failed (${response.status}).`;
+        }
         throw new Error(message);
       }
-      return data;
+      return data || {};
     }
 
     async function validateSession() {
@@ -1601,6 +1725,115 @@
             tile.style.boxShadow = "none";
           }
         });
+      });
+    }
+  </script>
+
+  <script>
+    const chatButton = document.getElementById("chatButton");
+    const chatPanel = document.getElementById("chatPanel");
+    const chatClose = document.getElementById("chatClose");
+    const chatLog = document.getElementById("chatLog");
+    const chatInput = document.getElementById("chatInput");
+    const chatSend = document.getElementById("chatSend");
+    let chatMessages = [];
+    let chatSince = 0;
+    let chatTimer = null;
+
+    function renderChat(messages) {
+      if (!chatLog) return;
+      chatLog.innerHTML = "";
+      messages.slice(-60).forEach((msg) => {
+        const bubble = document.createElement("div");
+        bubble.className = "chat-bubble";
+        bubble.textContent = msg.text;
+
+        const meta = document.createElement("div");
+        meta.className = "chat-meta";
+        const time = new Date(msg.time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+        meta.textContent = `${msg.from || "Player"} · ${time}`;
+        bubble.appendChild(meta);
+
+        chatLog.appendChild(bubble);
+      });
+      chatLog.scrollTop = chatLog.scrollHeight;
+    }
+
+    function pushSystemMessage(text) {
+      chatMessages.push({ text, time: Date.now(), from: "System" });
+      renderChat(chatMessages);
+    }
+
+    async function pullChat() {
+      if (!sessionToken) {
+        pushSystemMessage("Login required to chat.");
+        return;
+      }
+      try {
+        const data = await apiRequest("/chat/pull", {
+          method: "POST",
+          body: JSON.stringify({ token: sessionToken, since: chatSince })
+        });
+        if (Array.isArray(data.messages) && data.messages.length) {
+          chatMessages = chatMessages.concat(data.messages);
+          chatSince = data.messages[data.messages.length - 1].time;
+          renderChat(chatMessages);
+        }
+      } catch (error) {
+        pushSystemMessage(error.message || "Chat unavailable.");
+      }
+    }
+
+    async function sendChat(text) {
+      const trimmed = text.trim();
+      if (!trimmed) return;
+      if (!sessionToken) {
+        pushSystemMessage("Login required to chat.");
+        return;
+      }
+      try {
+        const data = await apiRequest("/chat/send", {
+          method: "POST",
+          body: JSON.stringify({ token: sessionToken, text: trimmed })
+        });
+        if (data && data.message) {
+          chatMessages.push(data.message);
+          chatSince = data.message.time;
+          renderChat(chatMessages);
+        }
+      } catch (error) {
+        pushSystemMessage(error.message || "Message failed.");
+      }
+    }
+
+    function toggleChat(open) {
+      if (!chatPanel) return;
+      chatPanel.classList.toggle("active", open);
+      if (open && chatInput) {
+        chatInput.focus();
+        pullChat();
+        if (!chatTimer) {
+          chatTimer = setInterval(pullChat, 3000);
+        }
+      } else if (!open && chatTimer) {
+        clearInterval(chatTimer);
+        chatTimer = null;
+      }
+    }
+
+    if (chatButton) chatButton.addEventListener("click", () => toggleChat(true));
+    if (chatClose) chatClose.addEventListener("click", () => toggleChat(false));
+    if (chatSend) chatSend.addEventListener("click", () => {
+      if (!chatInput) return;
+      sendChat(chatInput.value);
+      chatInput.value = "";
+    });
+    if (chatInput) {
+      chatInput.addEventListener("keydown", (event) => {
+        if (event.key === "Enter") {
+          sendChat(chatInput.value);
+          chatInput.value = "";
+        }
       });
     }
   </script>

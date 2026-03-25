@@ -19,6 +19,20 @@ const allowedPins = new Set(pinList.length ? pinList : defaultPins);
 
 const sessionsByPin = new Map();
 const sessionsByToken = new Map();
+const chatMessages = [];
+
+const MAX_CHAT_MESSAGES = 200;
+const MAX_CHAT_LENGTH = 200;
+
+const aliasAdjectives = [
+  "Neon", "Pixel", "Turbo", "Nova", "Arcade", "Rocket", "Vapor", "Cosmic",
+  "Glitch", "Laser", "Meteor", "Retro", "Flux", "Hyper", "Shadow", "Spark"
+];
+
+const aliasNouns = [
+  "Fox", "Wolf", "Hawk", "Bear", "Lynx", "Otter", "Viper", "Panda",
+  "Tiger", "Falcon", "Comet", "Ranger", "Pilot", "Runner", "Specter", "Drift"
+];
 
 function now() {
   return Date.now();
@@ -39,7 +53,9 @@ function cleanupExpired() {
 
 function createSession(pin) {
   const token = `tok_${now()}_${Math.random().toString(16).slice(2)}`;
-  const session = { token, pin, expiresAt: now() + SESSION_TTL_MS };
+  const hash = token.split("").reduce((acc, ch) => acc + ch.charCodeAt(0), 0);
+  const alias = `${aliasAdjectives[hash % aliasAdjectives.length]}-${aliasNouns[(hash >> 3) % aliasNouns.length]}-${(hash % 90) + 10}`;
+  const session = { token, pin, alias, expiresAt: now() + SESSION_TTL_MS };
   sessionsByPin.set(pin, session);
   sessionsByToken.set(token, session);
   return session;
@@ -113,6 +129,50 @@ app.post("/logout", (req, res) => {
     sessionsByPin.delete(session.pin);
   }
   return res.json({ ok: true });
+});
+
+app.post("/chat/pull", (req, res) => {
+  const token = String(req.body?.token || "").trim();
+  if (!token) return res.status(400).json({ message: "Missing token." });
+
+  const session = sessionsByToken.get(token);
+  if (!session || isExpired(session)) {
+    return res.status(401).json({ message: "Session expired." });
+  }
+
+  refreshSession(session);
+  const since = Number(req.body?.since || 0);
+  const messages = chatMessages.filter((msg) => msg.time > since);
+  return res.json({ messages, serverTime: now() });
+});
+
+app.post("/chat/send", (req, res) => {
+  const token = String(req.body?.token || "").trim();
+  if (!token) return res.status(400).json({ message: "Missing token." });
+
+  const session = sessionsByToken.get(token);
+  if (!session || isExpired(session)) {
+    return res.status(401).json({ message: "Session expired." });
+  }
+
+  const raw = String(req.body?.text || "").trim();
+  if (!raw) return res.status(400).json({ message: "Message required." });
+  const text = raw.slice(0, MAX_CHAT_LENGTH);
+
+  refreshSession(session);
+  const message = {
+    id: `msg_${now()}_${Math.random().toString(16).slice(2)}`,
+    text,
+    time: now(),
+    from: session.alias || "Player"
+  };
+
+  chatMessages.push(message);
+  if (chatMessages.length > MAX_CHAT_MESSAGES) {
+    chatMessages.splice(0, chatMessages.length - MAX_CHAT_MESSAGES);
+  }
+
+  return res.json({ ok: true, message });
 });
 
 const port = process.env.PORT || 3000;
