@@ -6,6 +6,8 @@ app.use(cors({ origin: true }));
 app.use(express.json());
 
 const SESSION_TTL_MS = 60 * 1000;
+const ADMIN_TTL_MS = 60 * 1000;
+const ADMIN_PIN = process.env.ADMIN_PIN || "1039";
 
 const defaultPins = [
   "1029","2741","3906","4178","5283",
@@ -19,6 +21,7 @@ const allowedPins = new Set(pinList.length ? pinList : defaultPins);
 
 const sessionsByPin = new Map();
 const sessionsByToken = new Map();
+const adminSessions = new Map();
 const chatMessages = [];
 
 const MAX_CHAT_MESSAGES = 200;
@@ -49,6 +52,11 @@ function cleanupExpired() {
       if (session && session.token) sessionsByToken.delete(session.token);
     }
   }
+  for (const [token, session] of adminSessions.entries()) {
+    if (isExpired(session)) {
+      adminSessions.delete(token);
+    }
+  }
 }
 
 function createSession(pin) {
@@ -65,6 +73,19 @@ function refreshSession(session) {
   session.expiresAt = now() + SESSION_TTL_MS;
   sessionsByPin.set(session.pin, session);
   sessionsByToken.set(session.token, session);
+  return session;
+}
+
+function createAdminSession() {
+  const token = `adm_${now()}_${Math.random().toString(16).slice(2)}`;
+  const session = { token, expiresAt: now() + ADMIN_TTL_MS };
+  adminSessions.set(token, session);
+  return session;
+}
+
+function refreshAdminSession(session) {
+  session.expiresAt = now() + ADMIN_TTL_MS;
+  adminSessions.set(session.token, session);
   return session;
 }
 
@@ -129,6 +150,49 @@ app.post("/logout", (req, res) => {
     sessionsByPin.delete(session.pin);
   }
   return res.json({ ok: true });
+});
+
+app.post("/admin/login", (req, res) => {
+  const pin = String(req.body?.pin || "").trim();
+  if (!/^\d{4}$/.test(pin)) {
+    return res.status(400).json({ message: "PIN must be 4 digits." });
+  }
+  if (pin !== ADMIN_PIN) {
+    return res.status(401).json({ message: "Incorrect admin PIN." });
+  }
+
+  cleanupExpired();
+  const session = createAdminSession();
+  return res.json({ token: session.token, expiresAt: session.expiresAt, ttlMs: ADMIN_TTL_MS });
+});
+
+app.post("/admin/ping", (req, res) => {
+  const token = String(req.body?.token || "").trim();
+  if (!token) return res.status(400).json({ message: "Missing token." });
+
+  const session = adminSessions.get(token);
+  if (!session || isExpired(session)) {
+    return res.status(401).json({ message: "Admin session expired." });
+  }
+
+  refreshAdminSession(session);
+  return res.json({ ok: true, expiresAt: session.expiresAt, ttlMs: ADMIN_TTL_MS });
+});
+
+app.post("/admin/kick", (req, res) => {
+  const token = String(req.body?.token || "").trim();
+  if (!token) return res.status(400).json({ message: "Missing token." });
+
+  const session = adminSessions.get(token);
+  if (!session || isExpired(session)) {
+    return res.status(401).json({ message: "Admin session expired." });
+  }
+
+  refreshAdminSession(session);
+  const kicked = sessionsByToken.size;
+  sessionsByToken.clear();
+  sessionsByPin.clear();
+  return res.json({ ok: true, kicked });
 });
 
 app.post("/chat/pull", (req, res) => {

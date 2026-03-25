@@ -568,6 +568,19 @@
       padding: 20px;
     }
 
+    #adminGate {
+      position: fixed;
+      inset: 0;
+      background: rgba(6, 10, 18, 0.95);
+      color: white;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      font-family: "JetBrains Mono", ui-monospace, monospace;
+      z-index: 8700;
+      padding: 20px;
+    }
+
     .pin-panel {
       width: min(420px, 92vw);
       border: 3px solid #0f172a;
@@ -592,7 +605,8 @@
       font-size: 14px;
     }
 
-    #pinInput {
+    #pinInput,
+    #adminPinInput {
       font-size: 20px;
       padding: 10px;
       text-align: center;
@@ -607,6 +621,29 @@
       min-height: 18px;
       font-size: 13px;
       color: #fbbf24;
+    }
+
+    #adminKick {
+      position: fixed;
+      top: 18px;
+      left: 18px;
+      display: none;
+      padding: 10px 14px;
+      border-radius: 12px;
+      border: 3px solid #0f172a;
+      background: linear-gradient(135deg, #fb923c, #f43f5e);
+      color: #0f172a;
+      font-weight: 700;
+      cursor: pointer;
+      z-index: 9800;
+      box-shadow: 8px 8px 0 #0f172a;
+      font-family: "JetBrains Mono", ui-monospace, monospace;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    #adminKick.active {
+      display: inline-flex;
     }
 
     #grid {
@@ -944,6 +981,18 @@
     </div>
   </div>
 
+  <div id="adminGate">
+    <div class="pin-panel">
+      <h2>Admin Login</h2>
+      <p>Enter the admin PIN to unlock controls.</p>
+      <input id="adminPinInput" type="password" inputmode="numeric" maxlength="4" placeholder="----">
+      <button class="action-btn" id="adminPinSubmit" type="button">Unlock Admin</button>
+      <div id="adminPinMsg" class="pin-msg"></div>
+    </div>
+  </div>
+
+  <button id="adminKick" type="button">Kick All</button>
+
   <button id="secretButton" onclick="openSecret()">+</button>
   <div id="codeBox">
     <h3>Enter Code</h3>
@@ -1188,13 +1237,30 @@
     const pinInput = document.getElementById("pinInput");
     const pinMsg = document.getElementById("pinMsg");
     const pinSubmit = document.getElementById("pinSubmit");
+    const adminGate = document.getElementById("adminGate");
+    const adminPinInput = document.getElementById("adminPinInput");
+    const adminPinMsg = document.getElementById("adminPinMsg");
+    const adminPinSubmit = document.getElementById("adminPinSubmit");
+    const adminKick = document.getElementById("adminKick");
+    const buttonScreen = document.getElementById("buttonScreen");
     const API_BASE = window.HUB_API_BASE || "https://learninghubgz-com.onrender.com";
     let sessionToken = localStorage.getItem("hubSessionToken") || "";
+    let adminToken = localStorage.getItem("hubAdminToken") || "";
+    let gamesUnlocked = false;
     const SESSION_PING_MS = 25000;
+    const ADMIN_PING_MS = 25000;
+
+    function updateAdminKick() {
+      if (!adminKick) return;
+      const shouldShow = !!adminToken && gamesUnlocked;
+      adminKick.classList.toggle("active", shouldShow);
+    }
 
     function showPinGate(message) {
       if (!pinGate) return;
       pinGate.style.display = "flex";
+      gamesUnlocked = false;
+      updateAdminKick();
       if (pinInput) pinInput.value = "";
       if (pinMsg) pinMsg.textContent = message || "";
       setTimeout(() => {
@@ -1204,6 +1270,22 @@
 
     function hidePinGate() {
       if (pinGate) pinGate.style.display = "none";
+      gamesUnlocked = true;
+      updateAdminKick();
+    }
+
+    function showAdminGate(message) {
+      if (!adminGate) return;
+      adminGate.style.display = "flex";
+      if (adminPinInput) adminPinInput.value = "";
+      if (adminPinMsg) adminPinMsg.textContent = message || "";
+      setTimeout(() => {
+        if (adminPinInput) adminPinInput.focus();
+      }, 60);
+    }
+
+    function hideAdminGate() {
+      if (adminGate) adminGate.style.display = "none";
     }
 
     async function apiRequest(path, options) {
@@ -1272,6 +1354,20 @@
       }
     }
 
+    async function pingAdmin() {
+      if (!adminToken) return;
+      try {
+        await apiRequest("/admin/ping", {
+          method: "POST",
+          body: JSON.stringify({ token: adminToken })
+        });
+      } catch {
+        adminToken = "";
+        localStorage.removeItem("hubAdminToken");
+        updateAdminKick();
+      }
+    }
+
     async function submitPin() {
       const pin = (pinInput ? pinInput.value : "").replace(/\D/g, "").slice(0, 4);
       if (pinInput) pinInput.value = pin;
@@ -1293,6 +1389,46 @@
       }
     }
 
+    async function submitAdminPin() {
+      const pin = (adminPinInput ? adminPinInput.value : "").replace(/\D/g, "").slice(0, 4);
+      if (adminPinInput) adminPinInput.value = pin;
+      if (!/^\d{4}$/.test(pin)) {
+        if (adminPinMsg) adminPinMsg.textContent = "Enter a 4-digit admin PIN.";
+        return;
+      }
+
+      try {
+        const data = await apiRequest("/admin/login", {
+          method: "POST",
+          body: JSON.stringify({ pin })
+        });
+        adminToken = data.token || "";
+        if (adminToken) localStorage.setItem("hubAdminToken", adminToken);
+        hideAdminGate();
+        updateAdminKick();
+      } catch (error) {
+        if (adminPinMsg) adminPinMsg.textContent = error.message || "Admin login failed.";
+      }
+    }
+
+    async function kickAllPlayers() {
+      if (!adminToken) {
+        showAdminGate("Enter the admin PIN to continue.");
+        return;
+      }
+      try {
+        await apiRequest("/admin/kick", {
+          method: "POST",
+          body: JSON.stringify({ token: adminToken })
+        });
+        sessionToken = "";
+        localStorage.removeItem("hubSessionToken");
+        showPinGate("Players were kicked. Enter PIN to continue.");
+      } catch (error) {
+        showAdminGate(error.message || "Kick failed.");
+      }
+    }
+
     if (pinSubmit) pinSubmit.addEventListener("click", submitPin);
     if (pinInput) {
       pinInput.addEventListener("input", () => {
@@ -1303,15 +1439,45 @@
       });
     }
 
+    if (adminPinSubmit) adminPinSubmit.addEventListener("click", submitAdminPin);
+    if (adminPinInput) {
+      adminPinInput.addEventListener("input", () => {
+        adminPinInput.value = adminPinInput.value.replace(/\D/g, "").slice(0, 4);
+      });
+      adminPinInput.addEventListener("keydown", (event) => {
+        if (event.key === "Enter") submitAdminPin();
+      });
+    }
+    if (adminKick) adminKick.addEventListener("click", kickAllPlayers);
+
+    let adminTapCount = 0;
+    let adminTapTimer = null;
+
+    function registerAdminTap() {
+      if (!buttonScreen || buttonScreen.style.display === "none") return;
+      adminTapCount += 1;
+      if (adminTapTimer) clearTimeout(adminTapTimer);
+      adminTapTimer = setTimeout(() => {
+        adminTapCount = 0;
+      }, 1400);
+      if (adminTapCount >= 5) {
+        adminTapCount = 0;
+        showAdminGate();
+      }
+    }
+
+    if (buttonScreen) buttonScreen.addEventListener("click", registerAdminTap);
+
     setInterval(pingSession, SESSION_PING_MS);
+    setInterval(pingAdmin, ADMIN_PING_MS);
 
     async function unlockGames() {
-      const buttonScreen = document.getElementById("buttonScreen");
       if (buttonScreen) buttonScreen.style.display = "none";
       const wordLock = document.getElementById("wordLock");
       if (wordLock) wordLock.style.display = "none";
       const valid = await validateSession();
       if (!valid) showPinGate();
+      else hidePinGate();
     }
 
     window.unlockGames = unlockGames;
