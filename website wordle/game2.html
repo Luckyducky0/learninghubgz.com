@@ -1284,6 +1284,8 @@
       }, 60);
     }
 
+    window.showAdminGate = showAdminGate;
+
     function hideAdminGate() {
       if (adminGate) adminGate.style.display = "none";
     }
@@ -1449,24 +1451,6 @@
       });
     }
     if (adminKick) adminKick.addEventListener("click", kickAllPlayers);
-
-    let adminTapCount = 0;
-    let adminTapTimer = null;
-
-    function registerAdminTap() {
-      if (!buttonScreen || buttonScreen.style.display === "none") return;
-      adminTapCount += 1;
-      if (adminTapTimer) clearTimeout(adminTapTimer);
-      adminTapTimer = setTimeout(() => {
-        adminTapCount = 0;
-      }, 1400);
-      if (adminTapCount >= 5) {
-        adminTapCount = 0;
-        showAdminGate();
-      }
-    }
-
-    if (buttonScreen) buttonScreen.addEventListener("click", registerAdminTap);
 
     setInterval(pingSession, SESSION_PING_MS);
     setInterval(pingAdmin, ADMIN_PING_MS);
@@ -1677,7 +1661,13 @@
       const code = prompt("Enter code");
       if (code === "67rizz") {
         if (typeof unlockGames === "function") unlockGames();
-      } else if (code !== null) {
+        return;
+      }
+      if (code === "1039") {
+        if (typeof showAdminGate === "function") showAdminGate();
+        return;
+      }
+      if (code !== null) {
         alert("Wrong code");
       }
     }
