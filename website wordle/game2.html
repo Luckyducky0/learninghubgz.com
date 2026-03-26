@@ -314,6 +314,8 @@
       min-width: 220px;
       max-height: min(60vh, 360px);
       overflow-y: auto;
+      overscroll-behavior: contain;
+      touch-action: pan-y;
       background: rgba(15, 23, 42, 0.96);
       border: 3px solid #0f172a;
       border-radius: 16px;
@@ -1338,7 +1340,13 @@
       closeGameDropdown();
     });
     window.addEventListener("resize", closeGameDropdown);
-    window.addEventListener("scroll", closeGameDropdown, true);
+    if (gameDropdown) {
+      gameDropdown.addEventListener("wheel", (event) => {
+        if (gameDropdown.scrollHeight > gameDropdown.clientHeight) {
+          event.stopPropagation();
+        }
+      });
+    }
 
     let paletteIndex = Number(localStorage.getItem("paletteIndex") || "0");
     if (Number.isNaN(paletteIndex)) paletteIndex = 0;
