@@ -189,10 +189,24 @@ app.post("/admin/kick", (req, res) => {
   }
 
   refreshAdminSession(session);
-  const kicked = sessionsByToken.size;
+  const keepToken = String(req.body?.keepToken || "").trim();
+  let keepSession = null;
+  if (keepToken) {
+    const existing = sessionsByToken.get(keepToken);
+    if (existing && !isExpired(existing)) {
+      keepSession = refreshSession(existing);
+    }
+  }
+
+  const total = sessionsByToken.size;
   sessionsByToken.clear();
   sessionsByPin.clear();
-  return res.json({ ok: true, kicked });
+  if (keepSession) {
+    sessionsByToken.set(keepSession.token, keepSession);
+    sessionsByPin.set(keepSession.pin, keepSession);
+  }
+  const kicked = keepSession ? Math.max(total - 1, 0) : total;
+  return res.json({ ok: true, kicked, kept: !!keepSession });
 });
 
 app.post("/chat/pull", (req, res) => {

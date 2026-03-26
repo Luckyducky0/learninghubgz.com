@@ -1419,13 +1419,15 @@
         return;
       }
       try {
-        await apiRequest("/admin/kick", {
+        const data = await apiRequest("/admin/kick", {
           method: "POST",
-          body: JSON.stringify({ token: adminToken })
+          body: JSON.stringify({ token: adminToken, keepToken: sessionToken })
         });
-        sessionToken = "";
-        localStorage.removeItem("hubSessionToken");
-        showPinGate("Players were kicked. Enter PIN to continue.");
+        if (!data || !data.kept) {
+          sessionToken = "";
+          localStorage.removeItem("hubSessionToken");
+          showPinGate("Players were kicked. Enter PIN to continue.");
+        }
       } catch (error) {
         showAdminGate(error.message || "Kick failed.");
       }
