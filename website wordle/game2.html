@@ -48,6 +48,10 @@
       z-index: 0;
     }
 
+    body.dropdown-open {
+      overflow: hidden;
+    }
+
     .now-playing {
       position: fixed;
       top: 18px;
@@ -1252,11 +1256,14 @@
     setPage(0);
 
     const gameDropdown = document.getElementById("gameDropdown");
+    let dropdownOpen = false;
 
     function closeGameDropdown() {
       if (!gameDropdown) return;
       gameDropdown.classList.remove("active");
       gameDropdown.innerHTML = "";
+      dropdownOpen = false;
+      document.body.classList.remove("dropdown-open");
     }
 
     function launchGameLink(game, link) {
@@ -1294,6 +1301,8 @@
       gameDropdown.style.top = `${top}px`;
       gameDropdown.style.width = `${dropdownWidth}px`;
       gameDropdown.classList.add("active");
+      dropdownOpen = true;
+      document.body.classList.add("dropdown-open");
     }
 
     function handleGameClick(game, card) {
@@ -1342,10 +1351,13 @@
     window.addEventListener("resize", closeGameDropdown);
     if (gameDropdown) {
       gameDropdown.addEventListener("wheel", (event) => {
-        if (gameDropdown.scrollHeight > gameDropdown.clientHeight) {
-          event.stopPropagation();
-        }
+        if (!dropdownOpen) return;
+        event.stopPropagation();
       });
+      gameDropdown.addEventListener("touchmove", (event) => {
+        if (!dropdownOpen) return;
+        event.stopPropagation();
+      }, { passive: true });
     }
 
     let paletteIndex = Number(localStorage.getItem("paletteIndex") || "0");
