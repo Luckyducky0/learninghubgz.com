@@ -1245,6 +1245,7 @@
     const buttonScreen = document.getElementById("buttonScreen");
     const API_BASE = window.HUB_API_BASE || "https://learninghubgz-com.onrender.com";
     let sessionToken = localStorage.getItem("hubSessionToken") || "";
+    let currentPin = "";
     let adminToken = localStorage.getItem("hubAdminToken") || "";
     let gamesUnlocked = false;
     const SESSION_PING_MS = 25000;
@@ -1384,6 +1385,7 @@
           body: JSON.stringify({ pin })
         });
         sessionToken = data.token || "";
+        currentPin = pin;
         if (sessionToken) localStorage.setItem("hubSessionToken", sessionToken);
         hidePinGate();
       } catch (error) {
@@ -1421,8 +1423,13 @@
       try {
         const data = await apiRequest("/admin/kick", {
           method: "POST",
-          body: JSON.stringify({ token: adminToken, keepToken: sessionToken })
+          body: JSON.stringify({ token: adminToken, keepToken: sessionToken, keepPin: currentPin })
         });
+        if (data && data.keepToken) {
+          sessionToken = data.keepToken;
+          localStorage.setItem("hubSessionToken", sessionToken);
+          return;
+        }
         if (!data || !data.kept) {
           sessionToken = "";
           localStorage.removeItem("hubSessionToken");
