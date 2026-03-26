@@ -307,6 +307,47 @@
       text-transform: uppercase;
     }
 
+    .game-dropdown {
+      position: fixed;
+      z-index: 9900;
+      display: none;
+      min-width: 220px;
+      background: rgba(15, 23, 42, 0.96);
+      border: 3px solid #0f172a;
+      border-radius: 16px;
+      box-shadow: 10px 10px 0 #0f172a;
+      padding: 12px;
+      gap: 8px;
+    }
+
+    .game-dropdown.active {
+      display: grid;
+      animation: dropdownPop 0.18s ease-out;
+    }
+
+    .game-dropdown button {
+      border: 2px solid #0f172a;
+      border-radius: 12px;
+      padding: 10px 12px;
+      background: rgba(34, 211, 238, 0.12);
+      color: #e2f3ff;
+      font-family: "JetBrains Mono", ui-monospace, monospace;
+      font-size: 13px;
+      cursor: pointer;
+      text-align: left;
+      box-shadow: 4px 4px 0 #0f172a;
+    }
+
+    .game-dropdown button:hover {
+      background: rgba(96, 165, 250, 0.2);
+      transform: translateY(-1px);
+    }
+
+    @keyframes dropdownPop {
+      0% { transform: translateY(-6px) scale(0.98); opacity: 0; }
+      100% { transform: translateY(0) scale(1); opacity: 1; }
+    }
+
     .card-thumb {
       width: 100%;
       height: 110px;
@@ -894,6 +935,7 @@
   <div id="nowPlaying" class="now-playing" aria-live="polite">
     <div id="nowPlayingTrack" class="now-playing-track"></div>
   </div>
+  <div id="gameDropdown" class="game-dropdown"></div>
 
   <div class="page">
     <section class="hero">
@@ -1022,9 +1064,25 @@
       { name: "Andrew", url: "https://andrewdavidsonphotography.com/", tag: "Gallery" },
       { name: "Calculator", url: "https://calcsolver.net/", tag: "Utility" },
       { name: "savita", url: "https://lowk3.savitaipaleenmusiikkikoulu.fi/", tag: "Library" },
-      { name: "Vapor", url: "https://learn-at.putnam.city/", tag: "Proxy" },
+      { name: "Everest", tag: "Proxy", links: [
+        { label: "Everest 1", url: "https://everest-is-cool.bad.mn/" },
+        { label: "Everest 2", url: "https://photography-is-myfav.photo-frame.com/" },
+        { label: "Everest 3", url: "https://mt-everest-is-peak.networkguru.com/" },
+        { label: "Everest 4", url: "https://science.elar.patf.com/" },
+        { label: "Everest 5", url: "https://everestresearch.dimitriecantemir.ro/" },
+        { label: "Everest 6", url: "https://mteverest.ecolefrancophone.com/" }
+      ] },
       { name: "Chroblox", url: "https://minor-aleen-chroblox-73b30ef9.koyeb.app/", tag: "Portal" },
-      { name: "science", url: "https://sc.dailyhealthscience.us/homework.jsp?id=bigE&from=3", tag: "Proxy" },
+      { name: "Axiom", tag: "Proxy", links: [
+        { label: "Axiom 1", url: "https://neverseemeagain.xenopoem.com/" },
+        { label: "Axiom 2", url: "https://donotdebate.rixillo.net/" },
+        { label: "Axiom 3", url: "https://axiomnet.kulukuri-saunat.fi/" },
+        { label: "Axiom 4", url: "https://izzo.abckamin.ee/" },
+        { label: "Axiom 5", url: "https://singleone.kulukuri-saunat.fi/" },
+        { label: "Axiom 6", url: "https://slowjamz.wildberi.ru/" },
+        { label: "Axiom 7", url: "https://bllymartw.lekhnathfb.com.np/" },
+        { label: "Axiom 8", url: "https://compontop.jayaho.ch/" }
+      ] },
       { name: "clever.com", url: "https://clever.com.rodzinnawiez.pl/", tag: "Proxy" }
     ];
 
@@ -1169,13 +1227,57 @@
     if (page2Btn) page2Btn.addEventListener("click", () => setPage(1));
     setPage(0);
 
-    function handleGameClick(game) {
-      if (game.external) {
-        window.open(game.url, "_blank", "noopener");
-        showNowPlaying(game.name);
+    const gameDropdown = document.getElementById("gameDropdown");
+
+    function closeGameDropdown() {
+      if (!gameDropdown) return;
+      gameDropdown.classList.remove("active");
+      gameDropdown.innerHTML = "";
+    }
+
+    function launchGameLink(game, link) {
+      const url = link.url || game.url;
+      const label = link.label ? `${game.name} - ${link.label}` : game.name;
+      const isExternal = !!link.external || !!game.external;
+      if (isExternal) {
+        window.open(url, "_blank", "noopener");
+        showNowPlaying(label);
         return;
       }
-      openGame(game.url, game.name);
+      openGame(url, label);
+    }
+
+    function openGameDropdown(game, card) {
+      if (!gameDropdown || !card) return;
+      gameDropdown.innerHTML = "";
+      const links = Array.isArray(game.links) ? game.links : [];
+      links.forEach((link) => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.textContent = link.label || game.name;
+        button.addEventListener("click", (event) => {
+          event.stopPropagation();
+          closeGameDropdown();
+          launchGameLink(game, link);
+        });
+        gameDropdown.appendChild(button);
+      });
+      const rect = card.getBoundingClientRect();
+      const dropdownWidth = 240;
+      const left = Math.min(rect.left, window.innerWidth - dropdownWidth - 16);
+      const top = rect.bottom + 10;
+      gameDropdown.style.left = `${Math.max(16, left)}px`;
+      gameDropdown.style.top = `${top}px`;
+      gameDropdown.style.width = `${dropdownWidth}px`;
+      gameDropdown.classList.add("active");
+    }
+
+    function handleGameClick(game, card) {
+      if (Array.isArray(game.links) && game.links.length) {
+        openGameDropdown(game, card);
+        return;
+      }
+      launchGameLink(game, { url: game.url, label: game.name, external: game.external });
     }
 
     gamePages.forEach((page) => {
@@ -1198,12 +1300,23 @@
           card.style.setProperty("--mx", `${x}%`);
           card.style.setProperty("--my", `${y}%`);
         });
-        card.addEventListener("click", () => handleGameClick(game));
+        card.addEventListener("click", (event) => {
+          event.stopPropagation();
+          handleGameClick(game, card);
+        });
         page.grid.appendChild(card);
         page.cards.push(card);
         cards.push({ card, game });
       });
     });
+
+    document.addEventListener("click", (event) => {
+      if (!gameDropdown || !gameDropdown.classList.contains("active")) return;
+      if (gameDropdown.contains(event.target)) return;
+      closeGameDropdown();
+    });
+    window.addEventListener("resize", closeGameDropdown);
+    window.addEventListener("scroll", closeGameDropdown, true);
 
     let paletteIndex = Number(localStorage.getItem("paletteIndex") || "0");
     if (Number.isNaN(paletteIndex)) paletteIndex = 0;
