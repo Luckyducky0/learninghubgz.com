@@ -312,6 +312,8 @@
       z-index: 9900;
       display: none;
       min-width: 220px;
+      max-height: min(60vh, 360px);
+      overflow-y: auto;
       background: rgba(15, 23, 42, 0.96);
       border: 3px solid #0f172a;
       border-radius: 16px;
@@ -341,6 +343,21 @@
     .game-dropdown button:hover {
       background: rgba(96, 165, 250, 0.2);
       transform: translateY(-1px);
+    }
+
+    .game-dropdown::-webkit-scrollbar {
+      width: 10px;
+    }
+
+    .game-dropdown::-webkit-scrollbar-track {
+      background: rgba(15, 23, 42, 0.6);
+      border-radius: 999px;
+    }
+
+    .game-dropdown::-webkit-scrollbar-thumb {
+      background: rgba(96, 165, 250, 0.6);
+      border-radius: 999px;
+      border: 2px solid rgba(15, 23, 42, 0.6);
     }
 
     @keyframes dropdownPop {
@@ -1060,7 +1077,7 @@
       { name: "Browser", url: "https://kidscalculatorforgraphing.xyz/a.html", tag: "Arcade" },
       { name: "Wither", url: "https://wither.lat/", tag: "Sandbox" },
       { name: "Twisted", url: "http://www.twistededucation.lol/", tag: "Mystery" },
-      { name: "Noah Tutor", url: "https://noahsamazingtutoringhelp.github.io/Noahs-Calculus-Tutor/", tag: "Math" },
+      { name: "Truffled", url: "https://educational.radissontucson.com/", tag: "Math" },
       { name: "Andrew", url: "https://andrewdavidsonphotography.com/", tag: "Gallery" },
       { name: "Calculator", url: "https://calcsolver.net/", tag: "Utility" },
       { name: "savita", url: "https://lowk3.savitaipaleenmusiikkikoulu.fi/", tag: "Library" },
@@ -1072,7 +1089,11 @@
         { label: "Everest 5", url: "https://everestresearch.dimitriecantemir.ro/" },
         { label: "Everest 6", url: "https://mteverest.ecolefrancophone.com/" }
       ] },
-      { name: "Chroblox", url: "https://minor-aleen-chroblox-73b30ef9.koyeb.app/", tag: "Portal" },
+      { name: "Chroblox", tag: "Portal", links: [
+        { label: "Chroblox Online", url: "https://chroblox.online/" },
+        { label: "Chroblox Store", url: "https://chroblox.store/" },
+        { label: "Chroblox Space", url: "https://chroblox.space/" }
+      ] },
       { name: "Axiom", tag: "Proxy", links: [
         { label: "Axiom 1", url: "https://neverseemeagain.xenopoem.com/" },
         { label: "Axiom 2", url: "https://donotdebate.rixillo.net/" },
@@ -1083,7 +1104,8 @@
         { label: "Axiom 7", url: "https://bllymartw.lekhnathfb.com.np/" },
         { label: "Axiom 8", url: "https://compontop.jayaho.ch/" }
       ] },
-      { name: "clever.com", url: "https://clever.com.rodzinnawiez.pl/", tag: "Proxy" }
+      { name: "Boredom V2", url: "https://mikumovieispeak.global.ssl.fastly.net/games/", tag: "Proxy" },
+      { name: "Utopia", url: "https://pteryla.solicituddemateriales.cl/", tag: "Proxy" }
     ];
 
     const baseGamesPage2 = [
