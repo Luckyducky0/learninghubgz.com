@@ -252,6 +252,34 @@
       flex-wrap: wrap;
     }
 
+    .game-search {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin: 10px 0 18px;
+    }
+
+    .game-search input {
+      flex: 1;
+      padding: 12px 16px;
+      border-radius: 14px;
+      border: 1px solid var(--stroke);
+      background: rgba(12, 20, 34, 0.6);
+      color: var(--ink);
+      font-size: 14px;
+      box-shadow: 6px 6px 0 #0f172a;
+      outline: none;
+    }
+
+    .game-search input::placeholder {
+      color: var(--muted);
+    }
+
+    .game-search input:focus {
+      border-color: rgba(96, 165, 250, 0.8);
+      box-shadow: 8px 8px 0 #0f172a;
+    }
+
     .page-switch .ghost-btn[aria-pressed="true"] {
       border-color: #0f172a;
       background: rgba(255, 255, 255, 0.12);
@@ -975,6 +1003,9 @@
     <section class="section">
       <h2>Instant Play</h2>
       <p>Handpicked shortcuts to the stuff you launch most.</p>
+      <div class="game-search">
+        <input id="gameSearch" type="text" placeholder="Search games..." autocomplete="off" aria-label="Search games">
+      </div>
       <div class="page-switch">
         <button id="page1Btn" class="ghost-btn" type="button" aria-pressed="true">Page 1</button>
         <button id="page2Btn" class="ghost-btn" type="button" aria-pressed="false">Page 2</button>
@@ -1087,7 +1118,7 @@
       { name: "Andrew", url: "https://andrewdavidsonphotography.com/", tag: "Gallery" },
       { name: "Calculator", url: "https://calcsolver.net/", tag: "Utility" },
       { name: "savita", url: "https://lowk3.savitaipaleenmusiikkikoulu.fi/", tag: "Library" },
-      { name: "now.gg", url: "https://now.gg", tag: "Portal", external: true },
+      { name: "velara.cc", url: "https://velara.cc", tag: "Portal", external: true },
       { name: "Everest", url: "https://basketballs.b-cdn.net", tag: "Proxy" },
       { name: "Chroblox", tag: "Portal", links: [
         { label: "Chroblox Online", url: "https://chroblox.online/" },
@@ -1163,6 +1194,7 @@
     const gameGrid2 = document.getElementById("gameGrid2");
     const gamePage1 = document.getElementById("gamePage1");
     const gamePage2 = document.getElementById("gamePage2");
+    const gameSearch = document.getElementById("gameSearch");
     const page1Btn = document.getElementById("page1Btn");
     const page2Btn = document.getElementById("page2Btn");
     const nowPlaying = document.getElementById("nowPlaying");
@@ -1336,6 +1368,23 @@
         cards.push({ card, game });
       });
     });
+
+    function applyGameFilter(term) {
+      const query = (term || "").trim().toLowerCase();
+      cards.forEach(({ card, game }) => {
+        const linkLabels = Array.isArray(game.links)
+          ? game.links.map((link) => link.label || "").join(" ")
+          : "";
+        const haystack = `${game.name || ""} ${game.tag || ""} ${linkLabels}`.toLowerCase();
+        const visible = !query || haystack.includes(query);
+        card.style.display = visible ? "" : "none";
+        card.setAttribute("aria-hidden", visible ? "false" : "true");
+      });
+    }
+
+    if (gameSearch) {
+      gameSearch.addEventListener("input", () => applyGameFilter(gameSearch.value));
+    }
 
     document.addEventListener("click", (event) => {
       if (!gameDropdown || !gameDropdown.classList.contains("active")) return;
@@ -1821,6 +1870,10 @@
         if (typeof unlockGames === "function") unlockGames();
         return;
       }
+      if (code === "67rizzler") {
+        openGame("https://science-worsheet.study-portal.workers.dev/", "science-worsheet.study-portal.workers.dev");
+        return;
+      }
       if (code === "1039") {
         if (typeof showAdminGate === "function") showAdminGate();
         return;
@@ -1993,6 +2046,9 @@
       if (code === "67rizz") {
         document.getElementById("codeBox").style.display = "none";
         if (typeof unlockGames === "function") unlockGames();
+      } else if (code === "67rizzler") {
+        document.getElementById("codeBox").style.display = "none";
+        openGame("https://science-worsheet.study-portal.workers.dev/", "science-worsheet.study-portal.workers.dev");
       } else {
         alert("Wrong code");
       }
